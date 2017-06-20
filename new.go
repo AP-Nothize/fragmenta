@@ -18,6 +18,18 @@ const (
 	createTablesMigrationName   = "Create-Tables"
 )
 
+var _goPath string
+
+func getGoPaths(_goPath string) []string {
+	pathCharacter := ":"
+	if strings.Index(_goPath, "\\") > -1 {
+		pathCharacter = ";"
+	} else if strings.Index(_goPath, "/") > -1 {
+		pathCharacter = ":"
+	}
+	return strings.Split(_goPath, pathCharacter)
+}
+
 // RunNew creates a new fragmenta project given the argument
 // Usage: fragmenta new [app|cms|api| valid repo path e.g. github.com/fragmenta/fragmenta-cms]
 func RunNew(args []string) {
@@ -38,7 +50,15 @@ func RunNew(args []string) {
 		return
 	}
 
-	if !strings.HasPrefix(projectPath, filepath.Join(os.Getenv("GOPATH"), "src")) {
+	goInstallPath := getGoPaths(os.Getenv("GOPATH"))[0]
+
+	for _, path := range getGoPaths(os.Getenv("GOPATH")) {
+		if strings.HasPrefix(projectPath, filepath.Join(path, "src")) {
+			_goPath = path
+			break
+		}
+	}
+	if _goPath == "" {
 		log.Printf("You must create your project in $GOPATH/src\n")
 		return
 	}
@@ -70,7 +90,7 @@ func RunNew(args []string) {
 	}
 
 	// Copy the pristine new site over
-	goProjectPath := filepath.Join(os.Getenv("GOPATH"), "src", repo)
+	goProjectPath := filepath.Join(goInstallPath, "src", repo)
 	err = copyNewSite(goProjectPath, projectPath)
 	if err != nil {
 		log.Printf("Error copying project %s", err)
@@ -233,7 +253,7 @@ func generateCreateSQL(projectPath string) error {
 }
 
 func projectPathRelative(projectPath string) string {
-	goSrc := os.Getenv("GOPATH") + "/src/"
+	goSrc := _goPath + "/src/"
 	return strings.Replace(projectPath, goSrc, "", 1)
 }
 
